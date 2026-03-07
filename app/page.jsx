@@ -3197,7 +3197,7 @@ export default function HomePage() {
       }
 
       const localUpdatedAt = window.localStorage.getItem('localUpdatedAt');
-      if (localUpdatedAt && meta.updated_at && new Date(meta.updated_at) <= new Date(localUpdatedAt)) {
+      if (localUpdatedAt && meta.updated_at && new Date(meta.updated_at) < new Date(localUpdatedAt)) {
         return;
       }
 
