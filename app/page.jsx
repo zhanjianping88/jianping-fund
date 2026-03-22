@@ -794,6 +794,9 @@ export default function HomePage() {
         const holdingAmount =
           amount == null ? '未设置' : `¥${amount.toFixed(2)}`;
         const holdingAmountValue = amount;
+        const holdingDaysValue = holding?.firstPurchaseDate
+          ? dayjs.tz(todayStr, TZ).diff(dayjs.tz(holding.firstPurchaseDate, TZ), 'day')
+          : null;
 
         const profitToday = profit ? profit.profitToday : null;
         const todayProfit =
@@ -869,6 +872,7 @@ export default function HomePage() {
           estimateProfitPercent,
           holdingAmount,
           holdingAmountValue,
+          holdingDaysValue,
           todayProfit,
           todayProfitPercent,
           todayProfitValue,
