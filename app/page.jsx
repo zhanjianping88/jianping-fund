@@ -4640,6 +4640,7 @@ export default function HomePage() {
                               <PcFundTable
                                 stickyTop={navbarHeight + marketIndexAccordionHeight + filterBarHeight}
                                 data={pcFundTableData}
+                                relatedSectorSessionKey={user?.id ?? ''}
                                 refreshing={refreshing}
                                 currentTab={currentTab}
                                 favorites={favorites}
@@ -4722,6 +4723,7 @@ export default function HomePage() {
                     {viewMode === 'list' && isMobile && (
                       <MobileFundTable
                         data={pcFundTableData}
+                        relatedSectorSessionKey={user?.id ?? ''}
                         refreshing={refreshing}
                         currentTab={currentTab}
                         favorites={favorites}

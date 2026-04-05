@@ -26,14 +26,16 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * 获取基金「关联板块」：查询 Supabase `fund_related` 表（fund_code → related_sector），并做 1 天缓存
  * 返回：展示用字符串，无数据或失败时为空字符串
+ * @param {string} [options.authSegment] - 与登录态绑定的缓存分段（如 user.id），避免未登录时缓存的空结果被登录后复用
  */
-export const fetchRelatedSectors = async (code, { cacheTime = ONE_DAY_MS } = {}) => {
+export const fetchRelatedSectors = async (code, { cacheTime = ONE_DAY_MS, authSegment = 'anon' } = {}) => {
   if (!code) return '';
   const normalized = String(code).trim();
   if (!normalized) return '';
   if (!isSupabaseConfigured) return '';
 
-  const cacheKey = `relatedSectors:${normalized}`;
+  const seg = authSegment != null && authSegment !== '' ? String(authSegment) : 'anon';
+  const cacheKey = `relatedSectors:${normalized}:${seg}`;
 
   try {
     const relatedSectors = await cachedRequest(async () => {

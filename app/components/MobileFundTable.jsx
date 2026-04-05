@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -107,6 +107,7 @@ function SortableRow({ row, children, isTableDragging, disabled }) {
  * @param {(oldIndex: number, newIndex: number) => void} [props.onReorder] - 拖拽排序回调
  * @param {(row: any) => Object} [props.getFundCardProps] - 给定行返回 FundCard 的 props；传入后点击基金名称将用底部弹框展示卡片视图
  * @param {boolean} [props.masked] - 是否隐藏持仓相关金额
+ * @param {string} [props.relatedSectorSessionKey] - 登录用户 id（未登录传空），用于关联板块查询缓存与登录后重新拉取
  */
 export default function MobileFundTable({
   data = [],
@@ -126,6 +127,7 @@ export default function MobileFundTable({
   blockDrawerClose = false,
   closeDrawerRef,
   masked = false,
+  relatedSectorSessionKey = '',
 }) {
   const [isNameSortMode, setIsNameSortMode] = useState(false);
 
@@ -456,7 +458,18 @@ export default function MobileFundTable({
   const [relatedSectorByCode, setRelatedSectorByCode] = useState({});
   const [sectorQuoteByLabel, setSectorQuoteByLabel] = useState({});
 
-  const fetchRelatedSector = async (code) => fetchRelatedSectors(code);
+  const sectorAuthSegment = relatedSectorSessionKey || 'anon';
+
+  const fetchRelatedSector = useCallback(
+    (code) => fetchRelatedSectors(code, { authSegment: sectorAuthSegment }),
+    [sectorAuthSegment],
+  );
+
+  useEffect(() => {
+    relatedSectorCacheRef.current.clear();
+    setRelatedSectorByCode({});
+    setSectorQuoteByLabel({});
+  }, [sectorAuthSegment]);
 
   const runWithConcurrency = async (items, limit, worker) => {
     const queue = [...items];
@@ -493,7 +506,7 @@ export default function MobileFundTable({
     })();
 
     return () => { cancelled = true; };
-  }, [relatedSectorEnabled, data]);
+  }, [relatedSectorEnabled, data, sectorAuthSegment, fetchRelatedSector]);
 
   useEffect(() => {
     if (!relatedSectorEnabled) return;

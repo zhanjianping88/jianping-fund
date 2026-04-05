@@ -355,6 +355,7 @@ export default function FundDailyEarnings({ series = [], theme = 'dark', masked 
             <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--table-row-alt-bg)' }}>
               <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--muted)', textAlign: 'left' }}>日期</th>
               <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--muted)', textAlign: 'right' }}>收益</th>
+              <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--muted)', textAlign: 'right' }}>收益率</th>
             </tr>
           </thead>
           <tbody>
@@ -364,6 +365,15 @@ export default function FundDailyEarnings({ series = [], theme = 'dark', masked 
               const sign = isValid && v > 0 ? '+' : isValid && v < 0 ? '-' : '';
               const cls = !isValid || masked ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '';
               const text = masked ? '***' : isValid ? `${sign}${Math.abs(v).toFixed(2)}` : '—';
+              const rv = row?.rate;
+              const rateValid = typeof rv === 'number' && Number.isFinite(rv);
+              const rateSign = rateValid && rv > 0 ? '+' : '';
+              const rateCls = masked || !rateValid ? '' : rv > 0 ? 'up' : rv < 0 ? 'down' : '';
+              const rateText = masked
+                ? '***'
+                : rateValid
+                  ? `${rateSign}${rv.toFixed(2)}%`
+                  : '—';
               return (
                 <tr key={`${row?.date || 'row'}_${idx}`} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text)' }}>
@@ -371,6 +381,9 @@ export default function FundDailyEarnings({ series = [], theme = 'dark', masked 
                   </td>
                   <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
                     <span className={cls}>{text}</span>
+                  </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+                    <span className={rateCls}>{rateText}</span>
                   </td>
                 </tr>
               );
@@ -401,7 +414,6 @@ export default function FundDailyEarnings({ series = [], theme = 'dark', masked 
           open={detailOpen}
           onOpenChange={setDetailOpen}
           series={filteredSeries}
-          theme={theme}
           masked={masked}
           title={`${rangeLabel}收益明细`}
         />

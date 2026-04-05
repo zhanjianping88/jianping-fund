@@ -1,41 +1,36 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CloseIcon, SwitchIcon } from './Icons';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
+import { CloseIcon } from './Icons';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 
-function getChartThemeColors(theme) {
-  if (theme === 'light') {
-    return {
-      danger: '#dc2626',
-      success: '#059669',
-      muted: '#475569',
-      border: '#e2e8f0',
-      text: '#0f172a',
-    };
-  }
-  return {
-    danger: '#f87171',
-    success: '#34d399',
-    muted: '#9ca3af',
-    border: '#1f2937',
-    text: '#e5e7eb',
-  };
+function buildTableRows(series) {
+  if (!Array.isArray(series) || series.length === 0) return [];
+  return [...series].reverse();
 }
 
 export default function FundDailyEarningsDetailModal({
   open,
   onOpenChange,
   series = [],
-  theme = 'dark',
-  masked = false,
   title = '收益明细',
+  masked = false,
 }) {
   const [isMobile, setIsMobile] = useState(false);
-  const [showRateMode, setShowRateMode] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(30);
   const scrollRef = useRef(null);
-  const colors = useMemo(() => getChartThemeColors(theme), [theme]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -46,53 +41,89 @@ export default function FundDailyEarningsDetailModal({
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  const rows = useMemo(() => {
-    if (!Array.isArray(series) || series.length === 0) return [];
-    return [...series].reverse();
-  }, [series]);
+  useEffect(() => {
+    if (open) setVisibleCount(30);
+  }, [open, series]);
 
-  const totalEarnings = useMemo(() => {
-    if (!rows.length) return 0;
-    return rows.reduce((sum, d) => {
-      const v = d?.earnings;
-      return (typeof v === 'number' && Number.isFinite(v)) ? sum + v : sum;
-    }, 0);
-  }, [rows]);
+  const data = useMemo(() => buildTableRows(series), [series]);
 
-  const totalRate = useMemo(() => {
-    if (!rows.length) return null;
-    let compound = 1;
-    let hasValidRate = false;
-    for (const r of rows) {
-      const rate = r?.rate;
-      if (typeof rate === 'number' && Number.isFinite(rate)) {
-        compound *= (1 + rate / 100);
-        hasValidRate = true;
-      }
-    }
-    if (!hasValidRate) return null;
-    return (compound - 1) * 100;
-  }, [rows]);
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: 'date',
+        header: '日期',
+        cell: (info) => info.getValue() || '—',
+        meta: { align: 'left' },
+      },
+      {
+        accessorKey: 'earnings',
+        header: '收益',
+        cell: (info) => {
+          const v = info.getValue();
+          const isValid = typeof v === 'number' && Number.isFinite(v);
+          if (masked) return '***';
+          if (!isValid) return '—';
+          const sign = v > 0 ? '+' : v < 0 ? '-' : '';
+          const cls = v > 0 ? 'up' : v < 0 ? 'down' : '';
+          return (
+            <span className={cls}>
+              {sign}
+              {Math.abs(v).toFixed(2)}
+            </span>
+          );
+        },
+        meta: { align: 'right' },
+      },
+      {
+        accessorKey: 'rate',
+        header: '收益率',
+        cell: (info) => {
+          const v = info.getValue();
+          if (masked) return '***';
+          if (v == null || !Number.isFinite(v)) return '—';
+          const sign = v > 0 ? '+' : '';
+          const cls = v > 0 ? 'up' : v < 0 ? 'down' : '';
+          return (
+            <span className={cls}>
+              {sign}
+              {v.toFixed(2)}%
+            </span>
+          );
+        },
+        meta: { align: 'right' },
+      },
+    ],
+    [masked],
+  );
 
-  const maxAbs = useMemo(() => {
-    if (!rows.length) return 1;
-    let m = 0;
-    for (const r of rows) {
-      const v = r?.earnings;
-      if (typeof v === 'number' && Number.isFinite(v)) {
-        const a = Math.abs(v);
-        if (a > m) m = a;
-      }
-    }
-    return m || 1;
-  }, [rows]);
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  const rows = table.getRowModel().rows.slice(0, visibleCount);
+  const hasMore = table.getRowModel().rows.length > visibleCount;
 
   const handleOpenChange = (next) => {
     if (!next) onOpenChange?.(false);
   };
 
+  const handleScroll = (e) => {
+    const target = e.currentTarget;
+    if (!target || !hasMore) return;
+    const distance = target.scrollHeight - target.scrollTop - target.clientHeight;
+    if (distance < 40) {
+      setVisibleCount((prev) => {
+        const next = prev + 30;
+        const total = table.getRowModel().rows.length;
+        return next > total ? total : next;
+      });
+    }
+  };
+
   const header = (
-    <div className="title" style={{ marginBottom: 10, justifyContent: 'space-between' }}>
+    <div className="title" style={{ marginBottom: 12, justifyContent: 'space-between' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span>{title}</span>
       </div>
@@ -107,213 +138,102 @@ export default function FundDailyEarningsDetailModal({
     </div>
   );
 
-  const sumColor = masked
-    ? 'var(--muted)'
-    : showRateMode
-      ? (totalRate == null ? 'var(--muted)' : (totalRate >= 0 ? colors.danger : colors.success))
-      : (totalEarnings >= 0 ? colors.danger : colors.success);
-
   const body = (
     <div
       ref={scrollRef}
-      style={{ maxHeight: "78vh", overflowY: "auto", paddingRight: 4 }}
+      style={{
+        maxHeight: '60vh',
+        overflowY: 'auto',
+        paddingRight: 4,
+      }}
+      onScroll={handleScroll}
     >
-      <div style={{ padding: "6px 2px 12px", textAlign: "center" }}>
+      {data.length === 0 && (
+        <div style={{ padding: '16px 0', textAlign: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}>暂无数据</span>
+        </div>
+      )}
+      {data.length > 0 && (
         <div
-          className="muted"
-          onClick={() => setShowRateMode((v) => !v)}
+          className="fund-history-table-wrapper"
           style={{
-            fontSize: 12,
-            marginBottom: 6,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            cursor: 'pointer',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            overflow: 'hidden',
+            background: 'var(--card)',
           }}
         >
-          <span>{showRateMode ? "累计收益率" : "累计收益(元)"}</span>
-          <button
-            type="button"
+          <table
+            className="fund-history-table"
             style={{
-              border: "none",
-              background: "transparent",
-              padding: 2,
-              cursor: "pointer",
-              opacity: 0.7,
-              display: "flex",
-              alignItems: "center",
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '13px',
+              color: 'var(--text)',
             }}
-            title={showRateMode ? "切换为累计收益" : "切换为累计收益率"}
           >
-            <SwitchIcon props={{ width: 14, height: 14 }} />
-          </button>
-        </div>
-        <div
-          style={{
-            fontSize: 32,
-            fontWeight: 700,
-            fontVariantNumeric: "tabular-nums",
-            color: sumColor,
-            lineHeight: 1.1,
-            cursor: 'pointer',
-          }}
-          onClick={() => setShowRateMode((v) => !v)}
-        >
-          {masked
-            ? "***"
-            : showRateMode
-              ? totalRate == null
-                ? "—"
-                : `${totalRate >= 0 ? "+" : ""}${totalRate.toFixed(2)}%`
-              : `${totalEarnings >= 0 ? "+" : "-"}${Math.abs(totalEarnings).toFixed(2)}`}
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          padding: "6px 2px 2px",
-        }}
-      >
-        {rows.length === 0 && (
-          <div style={{ padding: "16px 0", textAlign: "center" }}>
-            <span className="muted" style={{ fontSize: 12 }}>
-              暂无数据
-            </span>
-          </div>
-        )}
-
-        {rows.map((row, idx) => {
-          const v = row?.earnings;
-          const isValid = typeof v === "number" && Number.isFinite(v);
-          const value = isValid ? v : 0;
-          const rate =
-            typeof row?.rate === "number" && Number.isFinite(row.rate)
-              ? row.rate
-              : null;
-          const ratio = Math.min(1, Math.abs(value) / maxAbs);
-
-          // 参照截图：涨红跌绿（CN 市场风格）
-          const barColor =
-            value > 0 ? colors.danger : value < 0 ? colors.success : "#94a3b8";
-          const trackBg = theme === "light" ? "#eef2f7" : "#0b1220";
-
-          const centerPct = 50;
-          const halfWidthPct = ratio * 50;
-          const barLeft = value >= 0 ? centerPct : centerPct - halfWidthPct;
-          const barWidth = halfWidthPct;
-
-          const textColor =
-            theme === "light" ? "rgba(15,23,42,0.9)" : "rgba(255,255,255,0.92)";
-          const showValue = masked
-            ? "***"
-            : isValid
-              ? `${value > 0 ? "" : value < 0 ? "-" : ""}${Math.abs(value).toFixed(2)}`
-              : "—";
-          const showRate = masked
-            ? ""
-            : rate == null
-              ? ""
-              : `${rate > 0 ? "+" : ""}${rate.toFixed(2)}%`;
-
-          return (
-            <div
-              key={`${row?.date || "row"}_${idx}`}
-              style={{
-                position: "relative",
-                height: 38,
-                borderRadius: 10,
-                overflow: "hidden",
-                background: trackBg,
-                border: "1px solid var(--border)",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: 0,
-                  left: "50%",
-                  width: 1,
-                  background:
-                    theme === "light"
-                      ? "rgba(148,163,184,0.6)"
-                      : "rgba(148,163,184,0.35)",
-                }}
-              />
-
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: 0,
-                  left: `${barLeft}%`,
-                  width: `${barWidth}%`,
-                  background: barColor,
-                }}
-              />
-
-              <div
-                style={{
-                  position: "absolute",
-                  left: 12,
-                  top: 0,
-                  bottom: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  fontSize: 13,
-                  fontVariantNumeric: "tabular-nums",
-                  color: textColor,
-                }}
-              >
-                {row?.date || "—"}
-              </div>
-
-              <div
-                style={{
-                  position: "absolute",
-                  right: 12,
-                  top: 0,
-                  bottom: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  fontSize: 13,
-                  fontVariantNumeric: "tabular-nums",
-                  color: textColor,
-                }}
-              >
-                <div
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr
+                  key={hg.id}
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    lineHeight: 1.05,
-                    gap: 2,
+                    borderBottom: '1px solid var(--border)',
+                    background: 'var(--table-row-alt-bg)',
+                    boxShadow: '0 1px 0 0 var(--border)',
                   }}
                 >
-                  <div>{showValue}</div>
-                  {showRate ? (
-                    <div
-                      className="muted"
+                  {hg.headers.map((h) => (
+                    <th
+                      key={h.id}
                       style={{
-                        fontSize: 11,
-                        opacity: 0.9,
-                        fontVariantNumeric: "tabular-nums",
+                        padding: '8px 12px',
+                        fontWeight: 600,
+                        color: 'var(--muted)',
+                        textAlign: h.column.columnDef.meta?.align || 'left',
+                        background: 'var(--table-row-alt-bg)',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 1,
                       }}
                     >
-                      {showRate}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={row.id}
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      style={{
+                        padding: '8px 12px',
+                        color: 'var(--text)',
+                        textAlign: cell.column.columnDef.meta?.align || 'left',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data.length > 0 && hasMore && (
+        <div style={{ padding: '12px 0', textAlign: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}>向下滚动以加载更多...</span>
+        </div>
+      )}
     </div>
   );
 
@@ -322,7 +242,12 @@ export default function FundDailyEarningsDetailModal({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom">
-        <DrawerContent className="glass" defaultHeight="80vh" minHeight="40vh" maxHeight="90vh">
+        <DrawerContent
+          className="glass"
+          defaultHeight="70vh"
+          minHeight="40vh"
+          maxHeight="90vh"
+        >
           <DrawerHeader className="flex flex-row items-center justify-between gap-2 py-3">
             <DrawerTitle className="flex items-center gap-2.5 text-left">
               <span>{title}</span>
@@ -330,7 +255,10 @@ export default function FundDailyEarningsDetailModal({
             <DrawerClose
               className="icon-button border-none bg-transparent p-1"
               title="关闭"
-              style={{ borderColor: 'transparent', backgroundColor: 'transparent' }}
+              style={{
+                borderColor: 'transparent',
+                backgroundColor: 'transparent',
+              }}
             >
               <CloseIcon width="20" height="20" />
             </DrawerClose>
@@ -351,9 +279,9 @@ export default function FundDailyEarningsDetailModal({
         overlayClassName="modal-overlay"
         overlayStyle={{ zIndex: 9998 }}
         style={{
-          maxWidth: '640px',
-          width: '92vw',
-          maxHeight: '86vh',
+          maxWidth: '520px',
+          width: '90vw',
+          maxHeight: '80vh',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 9999,
@@ -366,4 +294,3 @@ export default function FundDailyEarningsDetailModal({
     </Dialog>
   );
 }
-
