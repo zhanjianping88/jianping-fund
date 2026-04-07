@@ -709,6 +709,11 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
 
+  const activeGroupId =
+    currentTab !== 'all' && currentTab !== 'fav' && groups.some((g) => g.id === currentTab)
+      ? currentTab
+      : null;
+
   // 计算持仓收益
   const getHoldingProfit = useCallback((fund, holding) => {
     if (!holding || !isNumber(holding.share)) return null;
@@ -722,6 +727,29 @@ export default function HomePage() {
 
     let currentNav;
     let profitToday;
+    let shareForTodayProfit = holding.share;
+
+    if (canCalcTodayProfit) {
+      // 当日收益口径：按“昨日收盘时持有份额”计算，避免把当日买入份额算进当日收益。
+      // 份额基数 = 当前份额 - 当日买入份额 + 当日卖出份额（卖出份额在开盘前仍持有，应计入当日涨跌）
+      let buyToday = 0;
+      let sellToday = 0;
+      const list = transactions && fund?.code ? (transactions[fund.code] || []) : [];
+      for (const tx of list) {
+        if (!tx || tx.date !== todayStr) continue;
+        const gid = tx.groupId || null;
+        if (activeGroupId) {
+          if (gid !== activeGroupId) continue;
+        } else {
+          if (gid) continue;
+        }
+        const s = Number(tx.share);
+        if (!Number.isFinite(s) || s <= 0) continue;
+        if (tx.type === 'buy') buyToday += s;
+        else if (tx.type === 'sell') sellToday += s;
+      }
+      shareForTodayProfit = Math.max(0, holding.share - buyToday + sellToday);
+    }
 
     if (!useValuation) {
       // 使用确权净值 (dwjz)
@@ -729,11 +757,11 @@ export default function HomePage() {
       if (!currentNav) return null;
 
       if (canCalcTodayProfit) {
-        const amount = holding.share * currentNav;
+        const amount = shareForTodayProfit * currentNav;
         // 优先使用昨日净值直接计算（更精确，避免涨跌幅四舍五入误差）
         const lastNav = fund.lastNav != null && fund.lastNav !== '' ? Number(fund.lastNav) : null;
         if (lastNav && Number.isFinite(lastNav) && lastNav > 0) {
-          profitToday = (currentNav - lastNav) * holding.share;
+          profitToday = (currentNav - lastNav) * shareForTodayProfit;
         } else {
           const gz = isString(fund.gztime) ? toTz(fund.gztime) : null;
           const jz = isString(fund.jzrq) ? toTz(fund.jzrq) : null;
@@ -766,7 +794,7 @@ export default function HomePage() {
       if (!currentNav) return null;
 
       if (canCalcTodayProfit) {
-        const amount = holding.share * currentNav;
+        const amount = shareForTodayProfit * currentNav;
         // 估算涨幅
         const gzChange = fund.estPricedCoverage > 0.05 ? fund.estGszzl : (Number(fund.gszzl) || 0);
         profitToday = amount - (amount / (1 + gzChange / 100));
@@ -788,12 +816,7 @@ export default function HomePage() {
       profitToday,
       profitTotal
     };
-  }, [isTradingDay, todayStr]);
-
-  const activeGroupId =
-    currentTab !== 'all' && currentTab !== 'fav' && groups.some((g) => g.id === currentTab)
-      ? currentTab
-      : null;
+  }, [isTradingDay, todayStr, transactions, activeGroupId]);
   const dailyEarningsScope = activeGroupId || DAILY_EARNINGS_SCOPE_ALL;
   const currentFundDailyEarnings = useMemo(() => {
     if (!isPlainObject(fundDailyEarnings)) return {};
