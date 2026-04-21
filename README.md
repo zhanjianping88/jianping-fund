@@ -172,7 +172,7 @@
 
 9. 部署 Supabase Edge Function（可选）
 
-   本项目使用的是 **Supabase 云服务（Supabase Cloud）**。如需把“OCR 识别出的长文本 → 解析出基金名称/代码/金额/收益”的逻辑放到云端执行，可部署边缘函数 `analyze-fund`。
+   本项目 OCR 识别基金截图功能依赖第三方模型接口，已封装为 Supabase Edge Function 以隐藏 API Key 并避免跨域问题。大模型服务赞助商为 [AINX](https://api.ainx.cc/)。
 
    **配置步骤：**
    - 需要用户已登录（函数会读取请求头 `Authorization`，并通过 `supabase.auth.getUser()` 校验 JWT）
