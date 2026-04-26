@@ -7843,7 +7843,7 @@ export default function HomePage() {
                   }}
                 >
                   <span>☕</span>
-                  <span>点此请作者喝杯咖啡</span>
+                  <span>点此请我喝杯咖啡</span>
                 </button>
               </div>
             </>

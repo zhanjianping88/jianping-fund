@@ -17,7 +17,7 @@ export default function DonateModal({ onClose }) {
       >
         <div className="title" style={{ marginBottom: 20, justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span>☕ 请作者喝杯咖啡</span>
+            <span>☕ 请我喝杯咖啡</span>
           </div>
           <button className="icon-button" onClick={onClose} style={{ border: 'none', background: 'transparent' }}>
             <CloseIcon width="20" height="20" />

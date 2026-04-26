@@ -8,8 +8,8 @@ import timezone from 'dayjs/plugin/timezone';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import zhifubaoImg from "../assets/zhifubao.jpg";
-import weixinImg from "../assets/weixin.jpg";
+import zhifubaoImg from "../assets/jianping-alipay.jpeg";
+import weixinImg from "../assets/jianping-wechat.jpeg";
 import { CalendarIcon, MinusIcon, PlusIcon } from './Icons';
 
 dayjs.extend(utc);
