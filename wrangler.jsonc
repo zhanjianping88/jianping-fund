@@ -1,7 +1,9 @@
 {
-  "name": "real-time-fund",
-  "compatibility_date": "2026-02-21",
-  "assets": {
-    "directory": "./out"
+  "name": "jianping-fund-cn",
+  "main": "./cloudflare/worker.mjs",
+  "compatibility_date": "2026-04-26",
+  "vars": {
+    "ORIGIN_BASE_URL": "https://zhanjianping88.github.io/jianping-fund",
+    "ORIGIN_PATH_PREFIX": "/jianping-fund"
   }
 }
