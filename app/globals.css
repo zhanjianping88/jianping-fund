@@ -744,67 +744,67 @@ body::before {
 
 /* Mobile Search Logic */
 @media (max-width: 640px) {
-  /* Default: Search hidden, Trigger visible */
   .navbar-add-fund {
     display: flex;
-    width: 0 !important;
+    width: 100% !important;
     min-width: 0 !important;
-    flex: 0 0 0 !important;
-    opacity: 0;
-    overflow: hidden;
+    max-width: none !important;
+    flex: 1 0 100% !important;
+    opacity: 1;
+    overflow: visible;
     padding: 0 !important;
     margin: 0 !important;
     border: none;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
+    pointer-events: auto;
+    order: 1;
   }
 
   .mobile-search-btn {
-    display: inline-flex !important;
+    display: none !important;
   }
 
-  /* When search focused/active */
   .brand {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 1;
-    transform: translateX(0);
+    transform: none;
     width: auto;
     white-space: nowrap;
+    order: 2;
   }
 
   .brand.search-focused-sibling {
-    width: 0 !important;
-    opacity: 0;
-    overflow: hidden;
+    width: auto !important;
+    opacity: 1 !important;
+    overflow: visible;
     padding: 0 !important;
     margin: 0 !important;
-    transform: translateX(-20px);
-    pointer-events: none;
+    transform: none;
+    pointer-events: auto;
+    flex: 1 1 auto;
   }
 
   .actions {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 1;
-    transform: translateX(0);
+    transform: none;
     width: auto;
     white-space: nowrap;
+    order: 3;
   }
 
   .actions.search-focused-sibling {
-    width: 0 !important;
-    opacity: 0;
-    overflow: hidden;
+    width: auto !important;
+    opacity: 1 !important;
+    overflow: visible;
     padding: 0 !important;
     margin: 0 !important;
-    transform: translateX(20px);
-    pointer-events: none;
+    transform: none;
+    pointer-events: auto;
   }
 
   .navbar-add-fund.search-focused {
     display: flex !important;
     max-width: 100% !important;
     width: 100% !important;
-    flex: 1 !important;
+    flex: 1 0 100% !important;
     margin-top: 0 !important;
     opacity: 1;
     pointer-events: auto;
@@ -853,6 +853,8 @@ body::before {
     right: 0;
     padding-left: 12px;
     padding-right: 4px;
+    padding-top: 10px;
+    padding-bottom: 10px;
     border-radius: 0;
     border-top: none;
     border-left: none;
@@ -862,15 +864,24 @@ body::before {
   }
 
   .navbar-add-fund {
-    order: 3;
+    order: 1;
     width: 100%;
     min-width: 0;
     max-width: none;
-    margin-top: 8px;
+    margin-top: 0;
   }
 
   .navbar-add-fund .button {
     display: inline-flex;
+  }
+
+  .brand {
+    order: 2;
+  }
+
+  .actions {
+    order: 3;
+    margin-left: auto;
   }
 }
 
